@@ -1,25 +1,27 @@
 import * as path from "path";
-import * as theia from "@theia/plugin";
-import { Disposable, QuickPick, window } from "@theia/plugin";
+import * as vscode from 'vscode';
+import { Disposable, QuickPick, window } from "vscode";
 import { FILE_SEARCH_MAX_RESULT, YAML_GLOB_PATTERN, JENKINSFILE_GLOB_PATTERN, GITLABCI_GLOB_PATTERN, EXCLUDE_GLOB_PATTERN, EXCLUDE_GLOB_PATTERN2, JS_GLOB_PATTERN } from "./constants";
 import { OperationCanceledError } from "./Errors";
 
-export interface Item extends theia.QuickPickItem {
+export interface Item extends vscode.QuickPickItem {
     relativeFilePath: string;
     relativeFolderPath: string;
     absoluteFilePath: string;
     absoluteFolderPath: string;
+    uri: vscode.Uri;
 }
 
-export async function quickPickJenkinsfileFileItem(fileUri: theia.Uri, rootFolder: theia.WorkspaceFolder): Promise<Item> {
+export async function quickPickPipelineFileItem(fileUri: vscode.Uri, rootFolder: vscode.WorkspaceFolder, toJenkins: boolean): Promise<Item> {
     if (fileUri) {
         return createFileItem(rootFolder, fileUri);
     }
 
-    const items: Item[] = await resolveFilesOfPattern(rootFolder, [JENKINSFILE_GLOB_PATTERN], EXCLUDE_GLOB_PATTERN);
+    let filePatterns = toJenkins? [GITLABCI_GLOB_PATTERN] : [JENKINSFILE_GLOB_PATTERN];
+    const items: Item[] = await resolveFilesOfPattern(rootFolder, filePatterns, EXCLUDE_GLOB_PATTERN);
     const fileItem: Item = await quickPickFileItem({
-        title: "Jenkins pipeline descriptor file",
-        placeholder: "Select a Jenkins pipeline descriptor file:",
+        title: "Pipeline descriptor file",
+        placeholder: "Select a pipeline descriptor file:",
         items: items
     });
 
@@ -29,7 +31,7 @@ export async function quickPickJenkinsfileFileItem(fileUri: theia.Uri, rootFolde
     return fileItem;
 }
 
-export function createFileItem(rootFolder: theia.WorkspaceFolder, uri: theia.Uri): Item {
+export function createFileItem(rootFolder: vscode.WorkspaceFolder, uri: vscode.Uri): Item {
     const relativeFilePath = path.join(".", uri.fsPath.substr(rootFolder.uri.fsPath.length));
 
     return <Item>{
@@ -38,13 +40,14 @@ export function createFileItem(rootFolder: theia.WorkspaceFolder, uri: theia.Uri
         label: relativeFilePath,
         relativeFolderPath: path.dirname(relativeFilePath),
         absoluteFilePath: uri.fsPath,
-        absoluteFolderPath: rootFolder.uri.fsPath
+        absoluteFolderPath: rootFolder.uri.fsPath,
+        uri: uri
     };
 }
 
-export async function resolveFilesOfPattern(rootFolder: theia.WorkspaceFolder, filePatterns: string[], excludePattern?: string)
+export async function resolveFilesOfPattern(rootFolder: vscode.WorkspaceFolder, filePatterns: string[], excludePattern?: string)
     : Promise<Item[] | undefined> {
-    let uris: theia.Uri[] = [];
+    let uris: vscode.Uri[] = [];
     await Promise.all(filePatterns.map(async (pattern: string) => {
         uris.push(...await getFileUris(rootFolder, pattern, excludePattern));
     }));
@@ -52,14 +55,14 @@ export async function resolveFilesOfPattern(rootFolder: theia.WorkspaceFolder, f
     uris = uris.filter((uri, index) => uris.findIndex(uri2 => uri.toString() === uri2.toString()) === index);
 
     if (!uris || uris.length === 0) {
-        return undefined;
+        throw new OperationCanceledError("No suitable pipeline files found in workspace");
     } else {
         return uris.map(uri => createFileItem(rootFolder, uri));
     }
 }
 
-async function getFileUris(folder: theia.WorkspaceFolder, globPattern: string, excludePattern?: string): Promise<theia.Uri[]> {
-    return await theia.workspace.findFiles(new theia.RelativePattern(folder, globPattern), excludePattern ? new theia.RelativePattern(folder, excludePattern) : undefined, FILE_SEARCH_MAX_RESULT, undefined);
+async function getFileUris(folder: vscode.WorkspaceFolder, globPattern: string, excludePattern?: string): Promise<vscode.Uri[]> {
+    return await vscode.workspace.findFiles(new vscode.RelativePattern(folder, globPattern), excludePattern ? new vscode.RelativePattern(folder, excludePattern) : undefined, FILE_SEARCH_MAX_RESULT, undefined);
 }
 
 export interface IPickMetadata {
