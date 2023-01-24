@@ -30,8 +30,12 @@ export async function convertPipeline(gitlabFileUri: theia.Uri | undefined): Pro
         await theia.window.showTextDocument(outputFile);
         theia.window.showInformationMessage("File conversion completed!");
     } catch (error) {
-        theia.window.showErrorMessage('Error: ' + (error as Error).message); error.
-            console.error(error);
+        if (error instanceof OperationCanceledError) {
+            theia.window.showErrorMessage(error.message);
+        } else {
+            theia.window.showErrorMessage(`Error: ${(error as Error).message}`);
+        }
+        throw error;
     }
 }
 

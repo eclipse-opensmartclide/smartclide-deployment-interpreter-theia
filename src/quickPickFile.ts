@@ -33,7 +33,7 @@ export async function quickPickJenkinsfileFileItem(fileUri: theia.Uri, rootFolde
     });
 
     if (!fileItem) {
-        throw new Error('No item was selected');
+        throw new OperationCanceledError('No item was selected');
     }
     return fileItem;
 }
