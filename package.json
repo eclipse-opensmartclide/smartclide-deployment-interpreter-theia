@@ -19,7 +19,7 @@
   "devDependencies": {
     "@theia/plugin": "next",
     "@theia/plugin-packager": "latest",
-    "rimraf": "2.6.2",
+    "rimraf": "5.0.1",
     "typescript-formatter": "7.2.2",
     "typescript": "^3.7.0",
     "ts-loader": "^4.1.0",
